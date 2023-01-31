@@ -1,5 +1,7 @@
 import "/style.css";
 
+const urlDomain = "http://localhost:3000";
+
 const loginArea = document.getElementById("loginArea");
 const loginText = document.getElementById("loginText");
 const inputLoginPassword = document.getElementById("inputLoginPassword");
@@ -10,6 +12,7 @@ const btnAdd = document.getElementById("btnAdd");
 const sectionStores = document.getElementById("sectionStores");
 const sectionCategories = document.getElementById("sectionCategories");
 const sectionSignatures = document.getElementById("sectionSignatures");
+const sectionClipboard = document.getElementById("sectionClipboard");
 const selectOptions = document.getElementById("selectOptions");
 const inputAddText = document.getElementById("inputAddText");
 
@@ -27,20 +30,27 @@ const btnCancelEditing = document.getElementById("btnCancelEditing");
 const btnConfirmEditing = document.getElementById("btnConfirmEditing");
 const inputModalEditDate = document.getElementById("inputModalEditDate");
 
+const editButtonClipboard1 = document.getElementById("editButtonClipboard1");
+const editButtonClipboard3 = document.getElementById("editButtonClipboard3");
+const editButtonClipboard4 = document.getElementById("editButtonClipboard4");
+const clipboardModalName = document.getElementById("clipboardModalName");
+
 loginButton.addEventListener("click", submitApiKey);
 inputLoginPassword.addEventListener("keyup", submitApiKey);
 btnCancelRemoving.addEventListener("click", hideRemoveModal);
 btnConfirmRemoving.addEventListener("click", removeItem);
 btnAdd.addEventListener("click", addItem);
 btnCancelEditing.addEventListener("click", hideEditModal);
-btnConfirmEditing.addEventListener("click", editSignature);
+btnConfirmEditing.addEventListener("click", editItem);
 
 selectOptions.addEventListener("change", changeOption);
 inputAddText.addEventListener("keyup", changeAddText);
 inputAddText.addEventListener("focusin", changeAddText);
 inputAddText.addEventListener("focusout", changeAddTextSize);
 
-const urlDomain = "http://localhost:3000";
+editButtonClipboard1.addEventListener("click", showEditItemModal);
+editButtonClipboard3.addEventListener("click", showEditItemModal);
+editButtonClipboard4.addEventListener("click", showEditItemModal);
 
 let apiKeyConfig,
   selectedItem = {},
@@ -85,6 +95,9 @@ function changeOption(e) {
       sectionStores.classList.remove("hidden");
       sectionCategories.classList.add("hidden");
       sectionSignatures.classList.add("hidden");
+      sectionClipboard.classList.add("hidden");
+      btnAdd.classList.remove("hidden");
+      inputAddText.disabled = false;
       inputAddText.maxLength = 50;
       inputAddText.rows = 1;
       currentSignatures = null;
@@ -94,6 +107,9 @@ function changeOption(e) {
       sectionStores.classList.add("hidden");
       sectionCategories.classList.remove("hidden");
       sectionSignatures.classList.add("hidden");
+      sectionClipboard.classList.add("hidden");
+      btnAdd.classList.remove("hidden");
+      inputAddText.disabled = false;
       inputAddText.maxLength = 50;
       inputAddText.rows = 1;
       currentSignatures = null;
@@ -103,9 +119,23 @@ function changeOption(e) {
       sectionStores.classList.add("hidden");
       sectionCategories.classList.add("hidden");
       sectionSignatures.classList.remove("hidden");
+      sectionClipboard.classList.add("hidden");
+      btnAdd.classList.remove("hidden");
+      inputAddText.disabled = false;
       inputAddText.maxLength = 500;
       inputAddText.rows = 1;
       listSignatures();
+      break;
+    case 3:
+      sectionStores.classList.add("hidden");
+      sectionCategories.classList.add("hidden");
+      sectionSignatures.classList.add("hidden");
+      sectionClipboard.classList.remove("hidden");
+      btnAdd.classList.add("hidden");
+      inputAddText.disabled = true;
+      inputAddText.maxLength = 500;
+      inputAddText.rows = 1;
+      listClipboard();
       break;
   }
 }
@@ -225,6 +255,45 @@ function listSignatures() {
           });
         } else {
           // createListEmpty();
+        }
+      }
+    })
+    .catch(function (err) {
+      loginText.innerHTML = "Erro na solicitação.";
+      loginText.classList.add("text-red-500");
+      console.log("Something went wrong!", err);
+    });
+}
+
+function listClipboard() {
+  if (!apiKeyConfig) {
+    showLogin(true);
+    return;
+  }
+  inputAddText.rows = 1;
+  inputAddText.value = null;
+  fetch(`${urlDomain}/clipboard?apiKeyConfig=${apiKeyConfig}`)
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (data) {
+      if (data.length > 0 && data[0] == "password") {
+        loginText.innerHTML = "Senha inválida!";
+        loginText.classList.add("text-red-500");
+        inputLoginPassword.value = "";
+        showLogin(true);
+        return false;
+      } else {
+        loginText.classList.remove("text-red-500");
+        showLogin(false);
+        if (data.length > 0) {
+          const dataObj = JSON.parse(data);
+          document.getElementById("itemContent1").innerText =
+            dataObj[0].content;
+          document.getElementById("itemContent3").innerText =
+            dataObj[1].content;
+          document.getElementById("itemContent4").innerText =
+            dataObj[2].content;
         }
       }
     })
@@ -359,33 +428,59 @@ function showRemoveItemModal(e) {
 function showEditItemModal(e) {
   e.stopPropagation();
   if (e.target.tagName == "svg") {
-    selectedItem.id =
-      e.target.parentElement.parentElement.querySelector("#itemId").textContent;
-    selectedItem.description =
-      e.target.parentElement.parentElement.querySelector(
-        "#itemDescription"
+    if (e.target.id.includes("editButtonClipboard")) {
+      selectedItem.id =
+        e.target.parentElement.querySelector("#itemId").textContent;
+      selectedItem.content = e.target.parentElement.querySelector(
+        "[id*='itemContent']"
       ).textContent;
-    selectedItem.date = convertDateFormat(
-      e.target.parentElement.parentElement.querySelector("#itemDate")
-        .textContent,
-      "us"
-    );
+      selectedItem.name =
+        e.target.parentElement.parentElement.querySelector("p").textContent;
+    } else {
+      selectedItem.id =
+        e.target.parentElement.parentElement.querySelector(
+          "#itemId"
+        ).textContent;
+      selectedItem.description =
+        e.target.parentElement.parentElement.querySelector(
+          "#itemDescription"
+        ).textContent;
+      selectedItem.date = convertDateFormat(
+        e.target.parentElement.parentElement.querySelector("#itemDate")
+          .textContent,
+        "us"
+      );
+    }
   }
   if (e.target.tagName == "path") {
-    selectedItem.id =
-      e.target.parentElement.parentElement.parentElement.querySelector(
-        "#itemId"
+    if (e.target.parentElement.id.includes("editButtonClipboard")) {
+      selectedItem.id =
+        e.target.parentElement.parentElement.querySelector(
+          "#itemId"
+        ).textContent;
+      selectedItem.content = e.target.parentElement.parentElement.querySelector(
+        "[id*='itemContent']"
       ).textContent;
-    selectedItem.description =
-      e.target.parentElement.parentElement.parentElement.querySelector(
-        "#itemDescription"
-      ).textContent;
-    selectedItem.date = convertDateFormat(
-      e.target.parentElement.parentElement.parentElement.querySelector(
-        "#itemDate"
-      ).textContent,
-      "us"
-    );
+      selectedItem.name =
+        e.target.parentElement.parentElement.parentElement.querySelector(
+          "p"
+        ).textContent;
+    } else {
+      selectedItem.id =
+        e.target.parentElement.parentElement.parentElement.querySelector(
+          "#itemId"
+        ).textContent;
+      selectedItem.description =
+        e.target.parentElement.parentElement.parentElement.querySelector(
+          "#itemDescription"
+        ).textContent;
+      selectedItem.date = convertDateFormat(
+        e.target.parentElement.parentElement.parentElement.querySelector(
+          "#itemDate"
+        ).textContent,
+        "us"
+      );
+    }
   }
   showEditModal();
 }
@@ -404,10 +499,22 @@ function hideRemoveModal() {
 }
 
 function showEditModal() {
-  inputModalEditText.textContent = `${selectedItem.description}`;
+  inputModalEditText.value = selectedItem.description
+    ? `${selectedItem.description}`
+    : `${selectedItem.content}`;
   modalOverlay.classList.remove("hidden");
   modalEdit.classList.remove("hidden");
-  inputModalEditDate.value = `${selectedItem.date}`;
+  inputModalEditDate.value = selectedItem.date ? `${selectedItem.date}` : "";
+
+  if (selectedItem.content) {
+    inputModalEditDate.classList.add("hidden");
+    clipboardModalName.classList.remove("hidden");
+    clipboardModalName.innerText = selectedItem.name;
+  } else {
+    inputModalEditDate.classList.remove("hidden");
+    clipboardModalName.classList.add("hidden");
+    clipboardModalName.innerText = "";
+  }
 }
 
 function hideEditModal() {
@@ -433,6 +540,14 @@ function removeItem() {
         removeSignature(selectedItem);
       }
       break;
+  }
+}
+
+function editItem() {
+  if (selectedItem.description) {
+    editSignature();
+  } else {
+    editClipboard();
   }
 }
 
@@ -473,6 +588,51 @@ function editSignature() {
         inputAddText.value = null;
         hideEditModal();
         listSignatures();
+      }
+    })
+    .catch(function (err) {
+      loginText.innerHTML = "Erro na solicitação.";
+      loginText.classList.add("text-red-500");
+      console.log("Something went wrong!", err);
+      hideEditModal();
+    });
+}
+
+function editClipboard() {
+  const editedClipboard = {
+    id: selectedItem.id,
+    content: inputModalEditText.value,
+  };
+  const defaultHeader = new Headers();
+  defaultHeader.append("Content-Type", "application/json");
+  const requestJSON = JSON.stringify(editedClipboard);
+  let requestOptions = {
+    method: "PUT",
+    headers: defaultHeader,
+    body: requestJSON,
+    redirect: "follow",
+  };
+
+  fetch(
+    `${urlDomain}/clipboard/update?apiKeyConfig=${apiKeyConfig}`,
+    requestOptions
+  )
+    .then(function (response) {
+      return response.json();
+    })
+    .then(function (data) {
+      if (data.length > 0 && data[0] == "password") {
+        loginText.innerHTML = "Senha inválida!";
+        loginText.classList.add("text-red-500");
+        inputLoginPassword.value = "";
+        showLogin(true);
+        return false;
+      } else {
+        loginText.classList.remove("text-red-500");
+        showLogin(false);
+        inputAddText.value = null;
+        hideEditModal();
+        listClipboard();
       }
     })
     .catch(function (err) {
